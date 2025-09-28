@@ -1,0 +1,883 @@
+<!-- (원본 주석 및 파일 맨위 내용은 그대로 유지됨) -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <meta charset="UTF-8">
+  <!-- 중요: 모바일에서 레이아웃을 올바르게 잡기 위한 뷰포트 설정 (추가) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>유피드 밴블리온</title>
+  <style>
+    /* ======================
+       레이아웃 안정화(오직 CSS만 수정)
+       - 데스크톱 동작은 건드리지 않음
+       - 모바일에서 사이드바 축소 허용, 스택 전환은 더 좁은 뷰포트에서만 수행
+       ====================== */
+
+    /* 전역 박스모델(레이아웃 예측성 향상) - 레이아웃 관련 최소한의 변경 */
+    html { box-sizing: border-box; -webkit-text-size-adjust: 100%; }
+    *, *::before, *::after { box-sizing: inherit; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #1c1c1c;
+      color: #fff;
+    }
+
+    /* 기본 이미지 규칙 (오버플로우 방지, 레이아웃 관련) */
+    img { max-width: 100%; height: auto; display: block; }
+
+    /* 헤더 (변경 없음) */
+    header {
+      background-color: #003d80;
+      color: white;
+      padding: 11px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header .logo {
+      font-size: 19.8px;
+      font-weight: bold;
+    }
+
+    header .auth-buttons a {
+      color: white;
+      text-decoration: none;
+      margin-left: 15px;
+      font-weight: bold;
+      font-size: 15.4px;
+      transition: color 0.3s;
+      cursor: pointer;
+    }
+
+    header .auth-buttons a:hover {
+      color: #ffcc00;
+    }
+
+    /* 공지 텍스트 박스 - (원래처럼 유지하되 반응형 보장) */
+    .notice-box {
+      width: 70%;
+      max-width: 1100px;
+      margin: 15px auto 0 auto;
+      text-align: left;
+      font-size: 19.8px;
+      font-weight: bold;
+      color: #ffae42;
+      box-sizing: border-box;
+    }
+
+    /* 슬라이더 (원본 동작 유지) */
+    .slider {
+      position: relative;
+      width: 70%;
+      max-width: 1100px;
+      margin: 10px auto;
+      height: 275px;
+      overflow: hidden;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      box-sizing: border-box;
+    }
+
+    .slides {
+      display: flex;
+      width: 300%;
+      height: 100%;
+      transition: transform 0.6s ease-in-out;
+    }
+
+    .slides img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .dots {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .dot {
+      height: 10px;
+      width: 10px;
+      margin: 0 4px;
+      background-color: #bbb;
+      border-radius: 50%;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .active {
+      background-color: #003d80;
+    }
+
+    /* ============================
+       핵심: community 섹션 레이아웃 (수정)
+       - 데스크톱 뷰는 기존 규칙과 동일하게 보이도록 보존
+       - 사이드바를 픽셀 고정 대신 % 기반으로 축소 허용
+       - 스택(세로 전환)은 viewport가 충분히 좁아졌을 때만 발생
+       ============================ */
+
+    .community-section {
+      width: 70%;
+      max-width: 1100px; /* 데스크톱 상한 유지 */
+      margin: 25px auto 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      box-sizing: border-box;
+      padding: 0 12px;
+      /* 데스크톱/태블릿에서 기본은 한 줄로 유지(필요시 사이드바가 축소됨) */
+      flex-wrap: nowrap;
+    }
+
+    /* 사이드바: 픽셀 고정 -> 비율 기반으로 축소 허용 (데스크톱에서는 max-width로 보장) */
+    .community-box {
+      background-color: #242424;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+
+      /* 변경: flex-basis를 percentage로 설정하여 좁은 화면에서 축소 허용 */
+      flex: 0 0 18%;     /* 두 사이드바 합 약 36% - 중앙이 남은 공간을 차지 */
+      max-width: 220px;  /* 데스크톱에서는 기존 한계 유지 */
+      min-width: 90px;   /* 아주 좁아지더라도 최소폭을 작게 하여 wrap을 방지 */
+
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+
+    /* 가운데 컬럼: 중앙 폭을 퍼센트 계산으로 변경 (사이드바 % 반영) */
+    .middle-column {
+      flex: 1 1 auto;
+      min-width: 0; /* 핵심: 자식 요소가 너무 커서 부모를 밀어내지 않게 함 */
+      /* 중앙 컬럼 최대폭을 퍼센트로 지정 -> 사이드바가 퍼센트로 줄어들면 중앙도 같이 맞춤 */
+      max-width: calc(100% - 36%); /* 2 * 18% 사이드바 + 간격 여유(approx) */
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+      box-sizing: border-box;
+    }
+
+    /* 텍스트 관련(변경 없음) */
+    .community-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #ffae42;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      white-space: normal;
+    }
+
+    .community-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      white-space: normal;
+    }
+
+    .community-list li { margin: 8px 0; line-height: 1.4; }
+    .community-list a {
+      color: #ddd;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: normal;
+      transition: color 0.3s;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      white-space: normal;
+    }
+    .community-list a:hover { color: #ffae42; }
+
+    .news-box {
+      width: 100%;
+      margin-top: 12px;
+      background-color: #1f1f1f;
+      padding: 8px;
+      border-radius: 8px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+      box-sizing: border-box;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      white-space: normal;
+    }
+
+    .news-list { list-style:none; padding:0; margin:0; }
+    .news-list li { margin:6px 0; word-break: keep-all; overflow-wrap: normal; }
+
+    /* ---------- 버튼 행(아이콘) ---------- */
+    .icon-buttons {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0 48px;
+      box-sizing: border-box;
+      margin: 0;
+      gap: 24px;
+    }
+
+    .icon-button {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      flex: 1 1 0;
+      max-width: 120px;
+      min-width: 60px; /* 더 작게 해도 아이콘이 줄어들게 최소값 낮춤 */
+    }
+
+    .icon-button img {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 8px;
+      border: 2px solid #fff;
+      transition: transform 0.2s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      background: #222;
+    }
+
+    .icon-button span { font-size: 14px; color: #ddd; }
+
+    /* 중앙 박스 (원래 구조 보존) */
+    .middle-box {
+      background-color: #242424;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      padding: 20px;
+      margin: 0 0 0 0;
+      min-height: 110px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .middle-box span { font-size: 16px; color: #ddd; }
+
+    /* 모달/폼 등: 변경 없음 (보존) */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content { background-color: #1c1c1c; padding: 20px; border-radius: 10px; color: white; width: 300px; }
+    .modal-content h2 { margin-top: 0; }
+    .modal-content input { width: 100%; margin: 5px 0; padding: 8px; border-radius: 5px; border: none; }
+    .modal-content button { margin-top: 10px; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .modal-close { float: right; cursor: pointer; font-size: 18px; margin-top: -5px; }
+
+    /* ---------- 반응형: 태블릿/모바일 (세부 조정) ---------- */
+
+    /* 기존의 '너무 넓게 스택 전환' 문제를 피하려고
+       스택 전환을 더 좁은 뷰포트에서만 하도록 변경합니다.
+       (기존 700px -> 이제 480px 이하에서 세로 스택) */
+    @media (max-width: 900px) {
+      /* 태블릿 수준에서의 조정: 전체 폭 확보 */
+      .community-section, .slider, .notice-box {
+        width: 92%;
+      }
+      /* 태블릿에서 사이드바를 조금 더 줄임(픽셀 대신 유연한 폭) */
+      .community-box {
+        flex: 0 0 16%;
+        min-width: 100px;
+        max-width: 180px;
+      }
+      .icon-buttons { padding: 0 24px; gap: 16px; }
+      .icon-button img { width: 56px; height: 56px; }
+      .middle-column { max-width: calc(100% - 32%); } /* sidebars ~16% each */
+    }
+
+    /* 모바일: 실제 '세로 스택'은 더 좁은 기기에서만 발생 (여기서부터 세로 정렬) */
+    @media (max-width: 480px) {
+      .community-section {
+        flex-direction: column;
+        width: 92%;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .middle-column {
+        order: -1;
+        max-width: none;
+        min-width: 0;
+      }
+
+      .community-box {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .community-list a { font-size: 14px; }
+
+      /* 아이콘 버튼 안 겹치게 padding 줄이기 */
+      .icon-buttons { padding: 0 12px; gap: 12px; }
+      .icon-button { min-width: 0; max-width: none; }
+      .icon-button img { width: 56px; height: 56px; }
+      .middle-box { min-height: 260px; padding: 12px; }
+    }
+
+    /* 프리젠테이션, 하단 카드 등은 본래 규칙을 유지 (최소한의 변경) */
+    .presentation-carousel { width: 100%; height: 170px; border-radius: 10px; overflow: hidden; position: relative; background: linear-gradient(180deg, #2a2a2a, #232323); box-shadow: inset 0 1px 0 rgba(255,255,255,0.02); flex: 0 0 170px; }
+    .inner-slides { display: flex; width: 300%; height: 100%; transition: transform 0.6s ease-in-out; }
+    .inner-slide { flex: 0 0 100%; height: 100%; padding: 14px; box-sizing: border-box; color: #fff; display: flex; flex-direction: column; justify-content: center; }
+    .pres-title { font-size: 18px; font-weight: bold; color: #ffea8a; margin-bottom: 6px; }
+    .pres-desc { font-size: 13px; color: #ddd; line-height: 1.4; }
+
+    .pres-dots { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 5; }
+    .pres-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.18); cursor: pointer; transition: transform 0.15s, background 0.15s; }
+    .pres-dot.active { background: #ffae42; transform: scale(1.2); }
+
+    .sub-lower { display: flex; gap: 12px; width: 100%; box-sizing: border-box; flex: 1 1 auto; }
+    .popular-card, .recommend-card { background-color: #1e1e1e; border-radius: 8px; padding: 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.4); box-sizing: border-box; flex: 1; min-height: 100px; }
+    .card-title { font-size: 14px; color: #ffae42; font-weight: bold; margin-bottom: 8px; }
+    .popular-list { list-style: none; padding: 0; margin: 0; color: #ddd; font-size: 13px; line-height: 1.45; }
+    .popular-list li { margin: 6px 0; }
+    .popular-list li .pop-link { color: #ddd; text-decoration: none; cursor: pointer; transition: color 0.18s; }
+    .popular-list li .pop-link:hover { color: #fffc6e; }
+
+    .rec-banner { width: 100%; height: 80px; border-radius: 6px; overflow: hidden; margin-bottom: 8px; display:flex; align-items:center; justify-content:center; background: linear-gradient(90deg,#2b2b2b,#222); }
+    .rec-banner img { max-width: 100%; max-height: 100%; object-fit: cover; }
+    .rec-list { font-size: 13px; color: #ddd; line-height: 1.4; }
+
+  </style>
+</head>
+<body>
+
+  <!-- 헤더 -->
+  <header>
+    <div class="logo">BANBLE LEON</div>
+    <div class="auth-buttons">
+      <a onclick="openModal('loginModal')">로그인</a>
+      <a onclick="openModal('signupModal')">회원가입</a>
+      <a id="logoutBtn" style="display:none;cursor:pointer;">로그아웃</a>
+      <span id="userName" style="margin-left:15px; font-weight:bold; color:#ffcc00; display:none;"></span>
+    </div>
+  </header>
+
+  <!-- 공지 텍스트 박스 -->
+  <div class="notice-box" style="font-size:15.4px;">
+    오늘의 공지: 새로운 이벤트가 시작되었습니다!
+  </div>
+
+  <!-- 슬라이더 -->
+  <div class="slider">
+    <div class="slides">
+      <img src="https://test-resize-image.wishbeen.co.kr/5e608143aa825c93a9dd78f8af521c74.jpg?w=790&q=80" alt="공지1">
+      <img src="https://pimg.mk.co.kr/meet/neds/2020/11/image_readtop_2020_1182659_16055986074435325.jpg" alt="공지2">
+      <img src="https://celcliptipsprod.s3-ap-northeast-1.amazonaws.com/tips_article_body/4c36/208331/7eb07261d46614eccf78b4ecdc7cd07a" alt="공지3">
+    </div>
+  </div>
+  <div class="dots">
+    <span class="dot active"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+  </div>
+
+  <!-- 커뮤니티 섹션: 좌 - 중앙(버튼+중앙박스) - 우 -->
+  <div class="community-section">
+    <!-- 왼쪽 A~E -->
+    <div class="community-box">
+      <div class="community-title">왼쪽 커뮤니티</div>
+      <ul class="community-list">
+        <li><a href="#">커뮤니티 A</a></li>
+        <li><a href="#">커뮤니티 B</a></li>
+        <li><a href="#">커뮤니티 C</a></li>
+        <li><a href="#">커뮤니티 D</a></li>
+        <li><a href="#">커뮤니티 E</a></li>
+      </ul>
+
+      <!-- 왼쪽 커뮤니티 바로 아래에 들어가는 뉴스 섹션 (추가됨) -->
+      <div class="news-box" aria-label="왼쪽 커뮤니티 뉴스">
+        <div class="news-title">최신 뉴스</div>
+        <ul class="news-list">
+          <li><span class="news-item">뉴스 1</span></li>
+          <li><span class="news-item">뉴스 2</span></li>
+          <li><span class="news-item">뉴스 3</span></li>
+          <li><span class="news-item">뉴스 4</span></li>
+          <li><span class="news-item">뉴스 5</span></li>
+          <li><span class="news-item">뉴스 11</span></li>
+          <li><span class="news-item">뉴스 12</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 중앙 컬럼: 버튼 행이 상단에 오도록 배치 -->
+    <div class="middle-column">
+      <!-- 아이콘 버튼들 -->
+      <div class="icon-buttons">
+        <div class="icon-button">
+          <img src="img1.png" alt="버튼1">
+          <span>버튼1</span>
+        </div>
+        <div class="icon-button">
+          <img src="img2.png" alt="버튼2">
+          <span>버튼2</span>
+        </div>
+        <div class="icon-button">
+          <img src="img3.png" alt="버튼3">
+          <span>버튼3</span>
+        </div>
+        <div class="icon-button">
+          <img src="img4.png" alt="버튼4">
+          <span>버튼4</span>
+        </div>
+      </div>
+
+      <!-- 중앙 세션 -->
+      <div class="middle-box">
+        <div class="presentation-carousel" aria-label="프리젠테이션 섹션">
+          <div class="inner-slides">
+            <div class="inner-slide">
+              <div class="pres-title">이달의 이벤트</div>
+              <div class="pres-desc">신규 가입자 대상 특별 보너스가 지급됩니다. 자세한 내용은 이벤트 페이지에서 확인하세요.</div>
+            </div>
+            <div class="inner-slide">
+              <div class="pres-title">업데이트 알림</div>
+              <div class="pres-desc">시스템 점검이 예정되어 있습니다. 점검 시간 동안 일부 기능이 제한될 수 있습니다.</div>
+            </div>
+            <div class="inner-slide">
+              <div class="pres-title">커뮤니티 챌린지</div>
+              <div class="pres-desc">이번 주에는 '사진 공유' 챌린지가 진행됩니다. 우수작에게 소정의 상품을 드립니다.</div>
+            </div>
+          </div>
+          <div class="pres-dots" aria-hidden="false">
+            <span class="pres-dot active" data-i="0"></span>
+            <span class="pres-dot" data-i="1"></span>
+            <span class="pres-dot" data-i="2"></span>
+          </div>
+        </div>
+
+        <div class="sub-lower">
+          <div class="popular-card" aria-label="인기 게시물">
+            <div class="card-title">인기 게시물</div>
+            <ul class="popular-list">
+              <li><a class="pop-link" href="#">[공지] 서버 점검 안내</a></li>
+              <li><a class="pop-link" href="#">오늘의 베스트 스토리</a></li>
+              <li><a class="pop-link" href="#">유저 인터뷰: 운영진 Q&A</a></li>
+              <li><a class="pop-link" href="#">꿀팁: 프로필 꾸미기</a></li>
+              <li><a class="pop-link" href="#">커뮤니티 가이드 업데이트</a></li>
+            </ul>
+          </div>
+
+          <div class="recommend-card" aria-label="추천 콘텐츠">
+            <div class="card-title">추천 콘텐츠</div>
+            <div class="rec-banner">
+              <img src="https://via.placeholder.com/420x140?text=추천+배너" alt="추천 배너">
+            </div>
+            <div class="rec-list">
+              - 초보자 가이드: 시작하기<br>
+              - 오늘의 인기 태그: #사진 #이벤트<br>
+              - 파트너 혜택 바로가기
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 중앙 세션 끝 -->
+    </div>
+
+    <!-- 오른쪽 -->
+    <div class="community-box">
+      <div class="community-title">오른쪽 커뮤니티</div>
+      <ul class="community-list">
+        <li><a href="#">커뮤니티 F</a></li>
+        <li><a href="#">커뮤니티 G</a></li>
+        <li><a href="#">커뮤니티 H</a></li>
+        <li><a href="#">커뮤니티 I</a></li>
+        <li><a href="#">커뮤니티 J</a></li>
+      </ul>
+
+      <div class="news-box" aria-label="오른쪽 커뮤니티 뉴스">
+        <div class="news-title">주요 공지</div>
+        <ul class="news-list">
+          <li><span class="news-item">뉴스 6</span></li>
+          <li><span class="news-item">뉴스 7</span></li>
+          <li><span class="news-item">뉴스 8</span></li>
+          <li><span class="news-item">뉴스 9</span></li>
+          <li><span class="news-item">뉴스 10</span></li>
+          <li><span class="news-item">뉴스 13</span></li>
+          <li><span class="news-item">뉴스 14</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- (이하 원본 스크립트/섹션/인라인 스타일은 변경하지 않았습니다) -->
+
+  <!-- === 추가된 뉴스/이슈 섹션 (community-section 바로 아래, 독립된 레벨) === -->
+  <div style="width:70%; margin:20px auto 24px auto; box-sizing:border-box;">
+    <div id="extraNewsContainer" style="background:#242424; border-radius:10px; padding:12px; box-shadow:0 2px 10px rgba(0,0,0,0.45);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-size:16px; color:#ffae42; font-weight:bold;">뉴스 | 디시미디어 | 디시이슈</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="extraPrev" aria-label="이전" style="background:transparent; border:1px solid #3a3a3a; color:#ddd; padding:6px 8px; border-radius:6px; cursor:pointer;">◀</button>
+          <span id="extraPage" style="color:#bbb; font-size:13px;">1/1</span>
+          <button id="extraNext" aria-label="다음" style="background:transparent; border:1px solid #3a3a3a; color:#ddd; padding:6px 8px; border-radius:6px; cursor:pointer;">▶</button>
+        </div>
+      </div>
+
+      <div id="extraNewsWrapper" style="display:flex; gap:12px; overflow-x:auto; scroll-behavior:smooth; padding-bottom:6px;">
+        <div class="extra-card" style="flex:0 0 220px; background:#1f1f1f; border-radius:8px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.5);">
+          <img src="https://via.placeholder.com/420x240?text=썸네일1" alt="thumb1" style="width:100%; height:120px; object-fit:cover; display:block;">
+          <div style="padding:10px; color:#ddd; font-size:14px; line-height:1.4;">
+            경기도, 'DMZ OPEN 국제음악제' 26일 고양서 개막
+          </div>
+        </div>
+
+        <div class="extra-card" style="flex:0 0 220px; background:#1f1f1f; border-radius:8px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.5);">
+          <img src="https://via.placeholder.com/420x240?text=썸네일2" alt="thumb2" style="width:100%; height:120px; object-fit:cover; display:block;">
+          <div style="padding:10px; color:#ddd; font-size:14px; line-height:1.4;">
+            최휘영 장관 "전통문화, K콘텐츠 성장동력으로"
+          </div>
+        </div>
+
+        <div class="extra-card" style="flex:0 0 220px; background:#1f1f1f; border-radius:8px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.5);">
+          <img src="https://via.placeholder.com/420x240?text=썸네일3" alt="thumb3" style="width:100%; height:120px; object-fit:cover; display:block;">
+          <div style="padding:10px; color:#ddd; font-size:14px; line-height:1.4;">
+            트럼프, '틱톡 美 사업권 인수' 행정명령 서명
+          </div>
+        </div>
+
+        <div class="extra-card" style="flex:0 0 220px; background:#1f1f1f; border-radius:8px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.5);">
+          <img src="https://via.placeholder.com/420x240?text=썸네일5" alt="thumb5" style="width:100%; height:120px; object-fit:cover; display:block;">
+          <div style="padding:10px; color:#ddd; font-size:14px; line-height:1.4;">
+            문화예술 행사 안내: 지역 카페 대관 전시
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 카테고리 박스 등 (변경 없음) -->
+    <div id="extraCategoryContainer" style="background:#242424; border-radius:10px; padding:12px; box-shadow:0 2px 10px rgba(0,0,0,0.45); margin-top:12px;">
+      <div style="font-size:16px; color:#ffae42; font-weight:bold; margin-bottom:10px;">카테고리</div>
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <div style="flex:1 1 14%; min-width:120px;">
+          <div style="color:#ffae42; font-weight:bold; margin-bottom:6px;">게임</div>
+          <ul style="list-style:none; padding:0; margin:0; color:#ddd; font-size:13px; line-height:1.6;">
+            <li>던전앤파이터</li>
+            <li>리그 오브 레전드</li>
+            <li>메이플스토리</li>
+            <li>슬러의 연적</li>
+            <li>아이돌마스터</li>
+          </ul>
+        </div>
+
+        <div style="flex:1 1 14%; min-width:120px;">
+          <div style="color:#ffae42; font-weight:bold; margin-bottom:6px;">연예/방송</div>
+          <ul style="list-style:none; padding:0; margin:0; color:#ddd; font-size:13px; line-height:1.6;">
+            <li>남자 연예인</li>
+            <li>여자 연예인</li>
+            <li>방탄소년단</li>
+            <li>아이유</li>
+            <li>일본 연예</li>
+          </ul>
+        </div>
+
+        <div style="flex:1 1 14%; min-width:120px;">
+          <div style="color:#ffae42; font-weight:bold; margin-bottom:6px;">스포츠</div>
+          <ul style="list-style:none; padding:0; margin:0; color:#ddd; font-size:13px; line-height:1.6;">
+            <li>삼성 라이온즈</li>
+            <li>한화 이글스</li>
+            <li>해외야구</li>
+            <li>국내야구</li>
+            <li>LG 트윈스</li>
+          </ul>
+        </div>
+
+        <div style="flex:1 1 14%; min-width:120px;">
+          <div style="color:#ffae42; font-weight:bold; margin-bottom:6px;">교육/금융/IT</div>
+          <ul style="list-style:none; padding:0; margin:0; color:#ddd; font-size:13px; line-height:1.6;">
+            <li>대출</li>
+            <li>비트코인</li>
+            <li>주식</li>
+            <li>아이폰</li>
+            <li>컴퓨터 본체</li>
+          </ul>
+        </div>
+
+        <div style="flex:1 1 14%; min-width:120px;">
+          <div style="color:#ffae42; font-weight:bold; margin-bottom:6px;">여행/음식/생활</div>
+          <ul style="list-style:none; padding:0; margin:0; color:#ddd; font-size:13px; line-height:1.6;">
+            <li>도시</li>
+            <li>여행-동남아</li>
+            <li>편의점</li>
+            <li>치킨</li>
+            <li>과자, 빵</li>
+          </ul>
+        </div>
+
+        <div style="flex:1 1 14%; min-width:120px;">
+          <div style="color:#ffae42; font-weight:bold; margin-bottom:6px;">취미/생활</div>
+          <ul style="list-style:none; padding:0; margin:0; color:#ddd; font-size:13px; line-height:1.6;">
+            <li>인터넷방송</li>
+            <li>판타지</li>
+            <li>토이</li>
+            <li>만화</li>
+            <li>향수, 화장품</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로그인 모달 -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal('loginModal')">&times;</span>
+      <h2>로그인</h2>
+      <input type="email" id="loginEmail" placeholder="이메일">
+      <input type="password" id="loginPass" placeholder="비밀번호">
+      <button id="loginSubmit">로그인</button>
+    </div>
+  </div>
+
+  <!-- 회원가입 모달 -->
+  <div id="signupModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal('signupModal')">&times;</span>
+      <h2>회원가입</h2>
+      <input type="text" id="signupNickname" placeholder="닉네임">
+      <input type="email" id="signupEmail" placeholder="이메일">
+      <input type="password" id="signupPass" placeholder="비밀번호">
+      <button id="signupSubmit">회원가입</button>
+    </div>
+  </div>
+
+  <!-- (스크립트 섹션은 원본 그대로 유지) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } 
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJZle3txhhthWgaIWTTHzrLl4bkJqQye4",
+      authDomain: "fast-gateway-290809.firebaseapp.com",
+      projectId: "fast-gateway-290809",
+      storageBucket: "fast-gateway-290809.firebasestorage.app",
+      messagingSenderId: "640433110514",
+      appId: "1:640433110514:web:8fe4fafc9a987b6a4b3f6b",
+      measurementId: "G-2V57XWX7CW"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    window.openModal = function(id) {
+      document.getElementById(id).style.display = "flex";
+    }
+    window.closeModal = function(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    function updateHeader(user) {
+      const userNameEl = document.getElementById("userName");
+      const loginBtn = document.querySelector(".auth-buttons a[onclick*='loginModal']");
+      const signupBtn = document.querySelector(".auth-buttons a[onclick*='signupModal']");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      if (user) {
+        if (loginBtn) loginBtn.style.display = "none";
+        if (signupBtn) signupBtn.style.display = "none";
+        if (logoutBtn) logoutBtn.style.display = "inline-block";
+
+        if (userNameEl) {
+          const name = user.displayName || user.email || "사용자";
+          userNameEl.textContent = name;
+          userNameEl.style.display = "inline-block";
+        }
+      } else {
+        if (loginBtn) loginBtn.style.display = "inline-block";
+        if (signupBtn) signupBtn.style.display = "inline-block";
+        if (logoutBtn) logoutBtn.style.display = "none";
+
+        if (userNameEl) {
+          userNameEl.textContent = "";
+          userNameEl.style.display = "none";
+        }
+      }
+    }
+
+    document.getElementById("signupSubmit").addEventListener("click", async () => {
+      const nickname = document.getElementById("signupNickname").value;
+      const email = document.getElementById("signupEmail").value;
+      const pass = document.getElementById("signupPass").value;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+        await updateProfile(userCredential.user, { displayName: nickname });
+        updateHeader(userCredential.user);
+        alert("회원가입 완료!");
+        closeModal("signupModal");
+      } catch (error) {
+        alert("회원가입 실패: " + error.message);
+      }
+    });
+
+    document.getElementById("loginSubmit").addEventListener("click", async () => {
+      const email = document.getElementById("loginEmail").value;
+      const pass = document.getElementById("loginPass").value;
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+        updateHeader(userCredential.user);
+        alert("로그인 성공!");
+        closeModal("loginModal");
+      } catch (error) {
+        alert("로그인 실패: " + error.message);
+      }
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      updateHeader(null);
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      updateHeader(user);
+    });
+  </script>
+
+  <script>
+    let index = 0;
+    const slides = document.querySelector(".slides");
+    const dots = document.querySelectorAll(".dot");
+
+    function showSlide(n) {
+      index = n;
+      slides.style.transform = `translateX(${-n * 100}%)`;
+      dots.forEach(dot => dot.classList.remove("active"));
+      dots[n].classList.add("active");
+    }
+
+    function autoSlide() {
+      index = (index + 1) % 3;
+      showSlide(index);
+    }
+
+    dots.forEach((dot, i) => {
+      dot.addEventListener("click", () => showSlide(i));
+    });
+
+    setInterval(autoSlide, 4000);
+  </script>
+
+  <!-- 중앙 프리젠테이션 전용 스크립트 -->
+  <script>
+    (function() {
+      const presSlides = document.querySelector(".inner-slides");
+      const presDots = Array.from(document.querySelectorAll(".pres-dot"));
+      if (!presSlides || presDots.length === 0) return;
+
+      let presIndex = 0;
+      const presCount = presDots.length;
+
+      function presShow(n) {
+        presIndex = n;
+        presSlides.style.transform = `translateX(${-n * 100}%)`;
+        presDots.forEach(d => d.classList.remove("active"));
+        presDots[n].classList.add("active");
+      }
+
+      function presAuto() {
+        presIndex = (presIndex + 1) % presCount;
+        presShow(presIndex);
+      }
+
+      presDots.forEach((dot, i) => {
+        dot.addEventListener("click", () => {
+          presShow(i);
+          resetPresInterval();
+        });
+      });
+
+      let presInterval = setInterval(presAuto, 5000);
+      function resetPresInterval() {
+        clearInterval(presInterval);
+        presInterval = setInterval(presAuto, 5000);
+      }
+
+      presShow(0);
+    })();
+  </script>
+
+  <!-- 추가된 섹션 동작 스크립트 (원본 보존) -->
+  <script>
+    (function(){
+      const wrapper = document.getElementById('extraNewsWrapper');
+      const prevBtn = document.getElementById('extraPrev');
+      const nextBtn = document.getElementById('extraNext');
+      const pageDisplay = document.getElementById('extraPage');
+      if (!wrapper || !prevBtn || !nextBtn || !pageDisplay) return;
+
+      function calcPages() {
+        const visibleWidth = wrapper.clientWidth;
+        const totalWidth = wrapper.scrollWidth;
+        const pages = Math.max(1, Math.ceil(totalWidth / visibleWidth));
+        return pages;
+      }
+
+      function updatePageDisplay() {
+        const pages = calcPages();
+        const current = Math.floor(wrapper.scrollLeft / wrapper.clientWidth) + 1;
+        pageDisplay.textContent = `${Math.min(current,pages)}/${pages}`;
+      }
+
+      prevBtn.addEventListener('click', () => {
+        wrapper.scrollBy({ left: -wrapper.clientWidth, behavior: 'smooth' });
+        setTimeout(updatePageDisplay, 450);
+      });
+      nextBtn.addEventListener('click', () => {
+        wrapper.scrollBy({ left: wrapper.clientWidth, behavior: 'smooth' });
+        setTimeout(updatePageDisplay, 450);
+      });
+
+      wrapper.addEventListener('scroll', () => {
+        if (this._extraTimer) clearTimeout(this._extraTimer);
+        this._extraTimer = setTimeout(() => updatePageDisplay(), 120);
+      });
+      window.addEventListener('resize', () => setTimeout(updatePageDisplay, 200));
+
+      updatePageDisplay();
+    })();
+  </script>
+
+  <!-- 푸터 (변경 없음) -->
+  <footer style="background:#111; color:#ccc; font-size:12px; padding:20px; text-align:center; line-height:1.5;">
+    <div>
+      <a href="#" style="color:#ccc; text-decoration:none; margin:0 4.5px;">이용약관</a> |
+      <a href="#" style="color:#ccc; text-decoration:none; margin:0 4.5px;">개인정보 처리방침</a> |
+      <a href="#" style="color:#ccc; text-decoration:none; margin:0 4.5px;">유피드 자산 데이터 서버 지침</a> |
+      <a href="#" style="color:#ccc; text-decoration:none; margin:0 4.5px;">밴블리온 운영부 고지 사항</a> |
+      <a href="#" style="color:#ccc; text-decoration:none; margin:0 4.5px;">커뮤니티 가이드라인</a>
+    </div>
+    <div style="margin-top:9px;">
+      유피드는 밴블리온 사 프로그램 개발 부서 "에너자이저"의 공식 인트라넷 플랫폼으로, 모든 사이트 내 정보는 사이트 자산사의 목적에 한해 제한되고 관리될 수 있습니다.
+    </div>
+    <div style="margin-top:9px;">
+      경기도 수원시 밴블리온 수원 지부 미공개 위치<br>
+      help@upid.org | 오픈 소스 라이선스<br>
+      ©UPID Foundation.
+    </div>
+  </footer>
+
+</body>
+</html>
